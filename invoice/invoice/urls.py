@@ -17,9 +17,17 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path
-from products import views
+from products import views as product_views
+from invoices import views as invoice_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('hello/', views.hello),
+
+    # route to products page
+    path('products/', product_views.products_list),
+    path('about/', product_views.about),  # route to about page
+
+    # route to invoices page
+    path('invoices/', invoice_views.invoice_list),  # Default route to products page
+
 ]

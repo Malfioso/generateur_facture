@@ -1,0 +1,14 @@
+{% extends 'products/base.html' %} {% block content %}
+
+<h1>Hello Django !</h1>
+<p>Mes produits préférés sont :</p>
+<!-- TODO : liste des produits -->
+<ul>
+  {% for product in products %}
+
+  <li>{{ product.name|upper }}</li>
+  {% endfor %}
+  <p>J'ai {{products|length}} fruits dans ma barquette</p>
+</ul>
+
+{% endblock %}

@@ -9,12 +9,6 @@ def products_list(request):
 
 
 def about(request):
-    products = Product.objects.all() 
-    return HttpResponse(f"""
-        <h1>Hello Django !</h1>
-        <p>Mes fruits préférés sont :<p>
-        <ul>
-            <li>{products[0].name}</li>
-            <li>{products[1].name}</li>
-        </ul>
-""")
+    products = Product.objects.all()
+    #dictionnaire contextuel 'products', abligatoire pour permettre à notre cabarit de capter ce qu'il se passe
+    return render(request,'products/hello.html',{'products': products})

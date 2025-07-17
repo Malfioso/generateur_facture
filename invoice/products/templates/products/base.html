@@ -5,6 +5,12 @@
     <link rel="stylesheet" href="{% static 'products/styles.css' %}" />
   </head>
   <body>
+    <nav>
+      <ul>
+        <li><a href="{% url 'product-list' %}">Groupes</a></li>
+        <li>factures</li>
+      </ul>
+    </nav>
     <!-- balise block est provient de Django ensuite son nom content-->
     {% block content %}{% endblock %}
   </body>

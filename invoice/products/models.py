@@ -4,7 +4,7 @@ from django.db import models
 class Product(models.Model):
     name = models.CharField(max_length=100)
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    expiration_date = models.DateField(auto_now=True)
+    expiration_date = models.DateField(blank=True, null=True)
 
     # nested class to specify the product variety
 

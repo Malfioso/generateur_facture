@@ -15,7 +15,7 @@ This project is a Django-based invoice generator for managing products and invoi
 1. **Clone the repository**
 
    ```sh
-   git clone <your-repo-url>
+   git clone https://github.com/Malfioso/generateur_facture.git
    cd generateur_facture
    ```
 

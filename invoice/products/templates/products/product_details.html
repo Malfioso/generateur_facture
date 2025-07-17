@@ -1,0 +1,7 @@
+{% extends 'products/base.html' %} {% block content %}
+<h2>
+  L'identifiant du produit est {{ product.id }} et je suis une {{product.name}},
+  <!-- WTF ??? DJANGO CA PEUT FAIRE CA ???? J'AI JAMAIS DECLARE CETTE FONCTION ??!-->
+  ma varieté est la suivante : {{product.get_variety_display }}
+</h2>
+{% endblock %}

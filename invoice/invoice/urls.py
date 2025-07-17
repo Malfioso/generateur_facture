@@ -25,6 +25,7 @@ urlpatterns = [
 
     # route to products page
     path('product_list/', product_views.product_list),  # route to about page
+    path('product_list/<int:id>/', product_views.product_details),
 
     # route to invoices page
     path('invoices/', invoice_views.invoice_list),  # Default route to products page

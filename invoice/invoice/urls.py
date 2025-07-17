@@ -24,8 +24,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # route to products page
-    path('products/', product_views.products_list),
-    path('about/', product_views.about),  # route to about page
+    path('product_list/', product_views.product_list),  # route to about page
 
     # route to invoices page
     path('invoices/', invoice_views.invoice_list),  # Default route to products page

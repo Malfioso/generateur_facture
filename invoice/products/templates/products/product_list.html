@@ -73,9 +73,8 @@
               <p class="card-text">
                 <strong>Origine :</strong> {{ product.get_variety_display }}<br />
                 <strong>Date d'expiration :</strong>
-                {% if product.expiration_date %} {{
-                product.expiration_date|date:"d/m/Y" }} {% else %} Non spécifiée
-                {% endif %}
+                {% if product.expiration_date %} {{ product.expiration_date}}
+                {%else %} Non spécifiée {% endif %}
               </p>
               <p class="card-text" id="price-text-{{ product.id }}">
                 <strong>Prix :</strong>
@@ -89,13 +88,26 @@
               </p>
 
               {% if request.user.is_superuser %}
-              <button
-                type="button"
-                class="btn btn-warning"
-                onclick="enablePriceEdit({{ product.id }}, {{ product.price }})"
+              <form
+                method="post"
+                action="{% url 'update-product-price' product.id %}"
               >
-                Modifier le prix
-              </button>
+                {% csrf_token %}
+                <div class="input-group my-2">
+                  <input
+                    type="number"
+                    name="price"
+                    step="0.01"
+                    min="0"
+                    value="{{ product.price }}"
+                    class="form-control"
+                  />
+                  <span class="input-group-text">€</span>
+                </div>
+                <button type="submit" class="btn btn-success btn-sm">
+                  Mettre à jour le prix
+                </button>
+              </form>
 
               <div
                 id="price-edit-{{ product.id }}"

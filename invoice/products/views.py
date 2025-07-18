@@ -31,30 +31,21 @@ def product_details(request, id):
 
 @user_passes_test(lambda u: u.is_superuser)
 def update_product_price(request, product_id):
-    """Met à jour le prix d'un produit via AJAX"""
     if request.method == 'POST':
+        product = get_object_or_404(Product, id=product_id)
         try:
-            product = get_object_or_404(Product, id=product_id)
-            data = json.loads(request.body)
-            new_price = float(data.get('price', 0))
-            
+            new_price = float(request.POST.get('price', 0))
             if new_price <= 0:
-                return JsonResponse({'success': False, 'error': 'Prix invalide'})
-            
+                messages.error(request, 'Prix invalide')
+                return redirect('product-list')
+
             product.price = new_price
             product.save()
-            
-            return JsonResponse({
-                'success': True, 
-                'new_price': str(product.price)
-            })
-        except (ValueError, TypeError):
-            return JsonResponse({'success': False, 'error': 'Format de prix invalide'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return JsonResponse({'success': False, 'error': 'Méthode non autorisée'})
+            messages.success(request, f"Prix du produit '{product.name}' mis à jour à {product.price}€ !")
+        except ValueError:
+            messages.error(request, 'Format de prix invalide')
 
+    return redirect('product-list')
 def invoice_list(request):
     """Affiche la liste des factures"""
     invoices = Invoice.objects.all().order_by('-created_at')

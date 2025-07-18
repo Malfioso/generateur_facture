@@ -8,10 +8,35 @@
   <body>
     <nav class="d-flex justify-content-center gap-3 my-3">
       <a href="{% url 'product-list' %}" class="btn btn-outline-primary"
-        >Groupes</a
+        >Produits</a
       >
-      <a href="{% url 'cart' %}" class="btn btn-outline-primary">🛒</a>
+      <a href="{% url 'invoice-list' %}" class="btn btn-outline-primary"
+        >📋 Factures</a
+      >
+      <a href="{% url 'invoice-create' %}" class="btn btn-outline-success"
+        >➕ Nouvelle facture</a
+      >
+      <a href="/admin/" class="btn btn-outline-secondary">👤</a>
     </nav>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="container">
+      {% for message in messages %}
+      <div
+        class="alert alert-{{ message.tags }} alert-dismissible fade show"
+        role="alert"
+      >
+        {{ message }}
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+        ></button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
 
     <!-- balise block est provient de Django ensuite son nom content-->
     {% block content %}{% endblock %}

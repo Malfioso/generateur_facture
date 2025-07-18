@@ -1,7 +1,7 @@
 """
 URL configuration for invoice project.
 
-The `urlpatterns` list routes URLs to views. For more information please see:
+The urlpatterns list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/5.2/topics/http/urls/
 Examples:
 Function views
@@ -23,11 +23,19 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-
-    # route to products page
-    path('product_list/', product_views.product_list,name="product-list"),  # route to about page
+    path('', product_views.product_list, name='home'),
+    
+    # Routes pour les produits
+    path('product_list/', product_views.product_list, name="product-list"),
     path('product_list/<int:id>/', product_views.product_details, name="product-detail"),
-    path('cart', product_views.cart_view, name="cart"),
-    path('invoice/add/<int:product_id>/', product_views.add_to_invoice, name='add-to-invoice'),
+    
+    # Routes pour les produits - mise à jour prix
+    path('products/<int:product_id>/update-price/', product_views.update_product_price, name="update-product-price"),
+    
+    # Routes pour les factures
+    path('invoices/', product_views.invoice_list, name="invoice-list"),
+    path('invoices/create/', product_views.invoice_create, name="invoice-create"),
+    path('invoices/<int:id>/', product_views.invoice_detail, name="invoice-detail"),
+    path('invoices/<int:id>/edit/', product_views.invoice_edit, name="invoice-edit"),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

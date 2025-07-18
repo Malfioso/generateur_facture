@@ -9,77 +9,192 @@
     z-index: 2;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   }
+  .split-container {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 32px;
+  }
+  .left-fixed-form {
+    width: 350px;
+    position: sticky;
+    top: 32px;
+    align-self: flex-start;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    padding: 24px 18px 18px 18px;
+    margin-bottom: 24px;
+    z-index: 10;
+    min-height: 200px;
+  }
+  .right-products {
+    flex: 1;
+  }
 </style>
 
-<h1>Hello Django !</h1>
-<p>Mes produits préférés sont :</p>
-<!-- TODO : liste des produits -->
-<ul>
-  {% for product in products %}
-
-  <li>
-    <a href="{% url 'product-detail' product.id %}">{{ product.name|upper }}</a>
-    {% if product.image %}
-    <img src="{{ product.image.url }}" alt="{{ product.name }}" />
-    {% else %}
-    <p><em>Aucune image pour ce produit 🐒</em></p>
-    {% endif %}
-  </li>
-  {% endfor %}
-  <p>J'ai {{products|length}} fruits dans ma barquette</p>
-</ul>
-
 <div class="container my-4">
-  <!-- le bloc ci-dessus ici -->
-  <div class="row row-cols-1 row-cols-md-3 g-4">
-    {% for product in products %}
-    <div class="col">
-      <div class="card h-100 text-center" style="width: 18rem; margin: auto">
-        {% if product.image %}
-        <img
-          src="{{ product.image.url }}"
-          class="card-img-top"
-          alt="{{ product.name }}"
-          style="object-fit: cover"
-        />
-        {% else %}
-        <img
-          src="https://via.placeholder.com/200x200?text=No+Image"
-          class="card-img-top"
-          alt="Pas d'image"
-        />
-        {% endif %}
+  <div class="split-container">
+    {% if request.user.is_superuser %}
+    <div class="left-fixed-form">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %} {{ form.as_p }}
+        <button type="submit" class="btn btn-primary w-100 mt-2">
+          Ajouter le produit
+        </button>
+      </form>
+    </div>
+    {% endif %}
+    <div class="right-products">
+      <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for product in products %}
+        <div class="col">
+          <div
+            class="card h-100 text-center"
+            style="width: 18rem; margin: auto"
+          >
+            {% if product.image %}
+            <img
+              src="{{ product.image.url }}"
+              class="card-img-top"
+              alt="{{ product.name }}"
+              style="object-fit: cover"
+            />
+            {% else %}
+            <img
+              src="https://via.placeholder.com/200x200?text=No+Image"
+              class="card-img-top"
+              alt="Pas d'image"
+            />
+            {% endif %}
 
-        <div class="card-body">
-          <h5 class="card-title">{{ product.name }}</h5>
-          <p class="card-text">Prix : {{ product.price }} €<br /></p>
-          <form method="post" action="{% url 'add-to-invoice' product.id %}">
-            {% csrf_token %}
-            <div class="mb-2">
-              <input
-                type="number"
-                name="quantity"
-                min="1"
-                value="1"
-                class="form-control"
-                required
-              />
+            <div class="card-body">
+              <h5 class="card-title">{{ product.name }}</h5>
+              <p class="card-text">
+                <strong>Origine :</strong> {{ product.get_variety_display }}<br />
+                <strong>Date d'expiration :</strong>
+                {% if product.expiration_date %} {{
+                product.expiration_date|date:"d/m/Y" }} {% else %} Non spécifiée
+                {% endif %}
+              </p>
+              <p class="card-text" id="price-text-{{ product.id }}">
+                <strong>Prix :</strong>
+                <span
+                  id="price-value-{{ product.id }}"
+                  class="text-primary fs-5"
+                >
+                  {{ product.price }}
+                </span>
+                €
+              </p>
+
+              {% if request.user.is_superuser %}
+              <button
+                type="button"
+                class="btn btn-warning"
+                onclick="enablePriceEdit({{ product.id }}, {{ product.price }})"
+              >
+                Modifier le prix
+              </button>
+
+              <div
+                id="price-edit-{{ product.id }}"
+                style="display: none; margin-top: 12px"
+              >
+                <div class="input-group">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    id="price-input-{{ product.id }}"
+                    value="{{ product.price }}"
+                    class="form-control"
+                  />
+                  <span class="input-group-text">€</span>
+                </div>
+                <div class="mt-2">
+                  <button
+                    type="button"
+                    class="btn btn-success btn-sm"
+                    onclick="savePrice({{ product.id }})"
+                  >
+                    Sauvegarder
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    onclick="cancelPriceEdit({{ product.id }}, {{ product.price }})"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+              {% endif %}
             </div>
-            <input type="hidden" name="invoice_id" value="{{ invoice.id }}" />
-            <button type="submit" class="btn btn-success">
-              Ajouter à la facture
-            </button>
-          </form>
+          </div>
         </div>
+        {% endfor %}
       </div>
     </div>
-    {% endfor %}
   </div>
 </div>
 
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %} {{ form.as_p }}
-  <button type="submit">Ajouter le produit</button>
-</form>
+<script>
+  function enablePriceEdit(productId, currentPrice) {
+    document.getElementById("price-text-" + productId).style.display = "none";
+    document.getElementById("price-edit-" + productId).style.display = "block";
+    document.getElementById("price-input-" + productId).focus();
+  }
+
+  function cancelPriceEdit(productId, originalPrice) {
+    document.getElementById("price-edit-" + productId).style.display = "none";
+    document.getElementById("price-text-" + productId).style.display = "";
+    document.getElementById("price-input-" + productId).value = originalPrice;
+  }
+
+  function savePrice(productId) {
+    var newPrice = document.getElementById("price-input-" + productId).value;
+
+    // Validation simple
+    if (!newPrice || newPrice <= 0) {
+      alert("Veuillez entrer un prix valide");
+      return;
+    }
+
+    // Mise à jour visuelle
+    document.getElementById("price-value-" + productId).textContent = newPrice;
+    document.getElementById("price-edit-" + productId).style.display = "none";
+    document.getElementById("price-text-" + productId).style.display = "";
+
+    // Appel AJAX pour sauvegarder côté serveur
+    fetch(`/products/${productId}/update-price/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")
+          .value,
+      },
+      body: JSON.stringify({
+        price: newPrice,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          // Optionnel : afficher un message de succès
+          console.log("Prix mis à jour avec succès");
+        } else {
+          alert("Erreur lors de la mise à jour du prix");
+          // Remettre l'ancien prix en cas d'erreur
+          location.reload();
+        }
+      })
+      .catch((error) => {
+        console.error("Erreur:", error);
+        alert("Erreur lors de la mise à jour du prix");
+        location.reload();
+      });
+  }
+</script>
 
 {% endblock %}

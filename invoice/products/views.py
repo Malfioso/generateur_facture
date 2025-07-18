@@ -1,25 +1,24 @@
-# ~/projects/generateur_facture/invoice/products/views.py
-
-from django.http import HttpResponse
-from django.shortcuts import render, redirect
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import user_passes_test
+import json
 from products.models import Product, Invoice, InvoiceItem
-from django.shortcuts import get_object_or_404, redirect
-from .forms import ProductForm
+from .forms import ProductForm, InvoiceForm, InvoiceItemFormSet
 
-products = Product.objects.all()
-
-form = ProductForm()
 def product_list(request):
     products = Product.objects.all()
-    form = ProductForm()
-
+    
     if request.method == 'POST':
         form = ProductForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
-            return redirect('product-list')  # évite les doublons en cas de F5
-        else:
-            form = ProductForm()
+            messages.success(request, 'Produit ajouté avec succès !')
+            return redirect('product-list')
+    else:
+        form = ProductForm()
+    
     return render(request, 'products/product_list.html', {
         'products': products,
         'form': form
@@ -30,44 +29,94 @@ def product_details(request, id):
     return render(request,'products/product_details.html',
          {'product': product})
 
-def cart_view(request):
-    cart = request.session.get('cart', {})
-    products = []
-    total = 0
-
-    for product_id, quantity in cart.items():
+@user_passes_test(lambda u: u.is_superuser)
+def update_product_price(request, product_id):
+    """Met à jour le prix d'un produit via AJAX"""
+    if request.method == 'POST':
         try:
-            product = Product.objects.get(id=product_id)
-            products.append({
-                'product': product,
-                'quantity': quantity,
-                'subtotal': product.price * quantity
+            product = get_object_or_404(Product, id=product_id)
+            data = json.loads(request.body)
+            new_price = float(data.get('price', 0))
+            
+            if new_price <= 0:
+                return JsonResponse({'success': False, 'error': 'Prix invalide'})
+            
+            product.price = new_price
+            product.save()
+            
+            return JsonResponse({
+                'success': True, 
+                'new_price': str(product.price)
             })
-            total += product.price * quantity
-        except Product.DoesNotExist:
-            continue
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'error': 'Format de prix invalide'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Méthode non autorisée'})
 
-    return render(request, 'products/cart.html', {
-        'cart_items': products,
-        'total': total
+def invoice_list(request):
+    """Affiche la liste des factures"""
+    invoices = Invoice.objects.all().order_by('-created_at')
+    return render(request, 'products/invoice_list.html', {
+        'invoices': invoices
     })
 
-def add_to_invoice(request, product_id):
+def invoice_create(request):
+    """Crée une nouvelle facture"""
     if request.method == 'POST':
-        product = get_object_or_404(Product, id=product_id)
-        invoice_id = request.POST.get('invoice_id')
-        quantity = int(request.POST.get('quantity', 1))
+        form = InvoiceForm(request.POST)
+        formset = InvoiceItemFormSet(request.POST)
+        
+        if form.is_valid() and formset.is_valid():
+            # Sauvegarde de la facture
+            invoice = form.save()
+            
+            # Sauvegarde des items
+            formset.instance = invoice
+            formset.save()
+            
+            messages.success(request, 'Facture créée avec succès !')
+            return redirect('invoice-detail', id=invoice.id)
+    else:
+        form = InvoiceForm()
+        formset = InvoiceItemFormSet()
+    
+    return render(request, 'products/invoice_create.html', {
+        'form': form,
+        'formset': formset
+    })
 
-        invoice = get_object_or_404(Invoice, id=invoice_id)
+def invoice_detail(request, id):
+    """Affiche les détails d'une facture"""
+    invoice = get_object_or_404(Invoice, id=id)
+    items = invoice.invoiceitem_set.all()
+    
+    return render(request, 'products/invoice_detail.html', {
+        'invoice': invoice,
+        'items': items
+    })
 
-        # Soit on met à jour, soit on crée un nouvel item
-        item, created = InvoiceItem.objects.get_or_create(
-            invoice=invoice,
-            product=product,
-            defaults={'quantity': quantity}
-        )
-        if not created:
-            item.quantity += quantity
-            item.save()
-
-        return redirect('invoice-detail', invoice_id=invoice.id)  # vers la page de détail
+def invoice_edit(request, id):
+    """Modifie une facture existante"""
+    invoice = get_object_or_404(Invoice, id=id)
+    
+    if request.method == 'POST':
+        form = InvoiceForm(request.POST, instance=invoice)
+        formset = InvoiceItemFormSet(request.POST, instance=invoice)
+        
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            
+            messages.success(request, 'Facture modifiée avec succès !')
+            return redirect('invoice-detail', id=invoice.id)
+    else:
+        form = InvoiceForm(instance=invoice)
+        formset = InvoiceItemFormSet(instance=invoice)
+    
+    return render(request, 'products/invoice_edit.html', {
+        'form': form,
+        'formset': formset,
+        'invoice': invoice
+    })

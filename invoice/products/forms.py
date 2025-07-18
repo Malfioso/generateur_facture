@@ -6,7 +6,7 @@ from .models import Product
 class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
-        fields = ['name', 'price', 'expiration_date', 'variety']
+        fields = ['name', 'price', 'expiration_date', 'variety','image']
         widgets = {
             'expiration_date': forms.DateInput(attrs={'type': 'date'}),
             'variety': forms.Select(),

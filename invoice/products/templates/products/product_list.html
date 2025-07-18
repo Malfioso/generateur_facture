@@ -1,5 +1,16 @@
 {% extends 'products/base.html' %} {% block content %}
 
+<style>
+  .card {
+    transition: transform 0.2s ease;
+  }
+  .card:hover {
+    transform: scale(1.07);
+    z-index: 2;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+</style>
+
 <h1>Hello Django !</h1>
 <p>Mes produits préférés sont :</p>
 <!-- TODO : liste des produits -->
@@ -8,12 +19,65 @@
 
   <li>
     <a href="{% url 'product-detail' product.id %}">{{ product.name|upper }}</a>
+    {% if product.image %}
+    <img src="{{ product.image.url }}" alt="{{ product.name }}" />
+    {% else %}
+    <p><em>Aucune image pour ce produit 🐒</em></p>
+    {% endif %}
   </li>
   {% endfor %}
   <p>J'ai {{products|length}} fruits dans ma barquette</p>
 </ul>
 
-<form method="post">
+<div class="container my-4">
+  <!-- le bloc ci-dessus ici -->
+  <div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for product in products %}
+    <div class="col">
+      <div class="card h-100 text-center" style="width: 18rem; margin: auto">
+        {% if product.image %}
+        <img
+          src="{{ product.image.url }}"
+          class="card-img-top"
+          alt="{{ product.name }}"
+          style="object-fit: cover"
+        />
+        {% else %}
+        <img
+          src="https://via.placeholder.com/200x200?text=No+Image"
+          class="card-img-top"
+          alt="Pas d'image"
+        />
+        {% endif %}
+
+        <div class="card-body">
+          <h5 class="card-title">{{ product.name }}</h5>
+          <p class="card-text">Prix : {{ product.price }} €<br /></p>
+          <form method="post" action="{% url 'add-to-invoice' product.id %}">
+            {% csrf_token %}
+            <div class="mb-2">
+              <input
+                type="number"
+                name="quantity"
+                min="1"
+                value="1"
+                class="form-control"
+                required
+              />
+            </div>
+            <input type="hidden" name="invoice_id" value="{{ invoice.id }}" />
+            <button type="submit" class="btn btn-success">
+              Ajouter à la facture
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<form method="post" enctype="multipart/form-data">
   {% csrf_token %} {{ form.as_p }}
   <button type="submit">Ajouter le produit</button>
 </form>

@@ -18,7 +18,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from products import views as product_views
-from invoices import views as invoice_views
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -26,8 +27,7 @@ urlpatterns = [
     # route to products page
     path('product_list/', product_views.product_list,name="product-list"),  # route to about page
     path('product_list/<int:id>/', product_views.product_details, name="product-detail"),
+    path('cart', product_views.cart_view, name="cart"),
+    path('invoice/add/<int:product_id>/', product_views.add_to_invoice, name='add-to-invoice'),
 
-    # route to invoices page
-    path('invoices/', invoice_views.invoice_list),  # Default route to products page
-
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

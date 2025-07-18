@@ -1,10 +1,12 @@
 from django.db import models
+from PIL import Image
 
 # Create your models here.
 class Product(models.Model):
     name = models.CharField(max_length=100)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     expiration_date = models.DateField(blank=True, null=True)
+    image = models.ImageField(upload_to='product_images/', blank=True, null=True)
 
     # nested class to specify the product variety
 
@@ -18,6 +20,16 @@ class Product(models.Model):
         Egypte = "EGY", "Egypte"
 
     variety = models.fields.CharField(choices=Variety.choices, max_length=3)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        if self.image:
+            img_path = self.image.path
+            img = Image.open(img_path)
+            img = img.convert("RGB")  # pour éviter les bugs avec PNG/transparence
+            img = img.resize((200, 200), Image.LANCZOS)  # redimensionne proprement
+            img.save(img_path)
 
     def __str__(self):
         return f'{self.name}'

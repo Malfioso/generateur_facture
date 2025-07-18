@@ -2,15 +2,17 @@
 <html>
   <head>
     <title>INVOICE</title>
-    <link rel="stylesheet" href="{% static 'products/styles.css' %}" />
+
+    {% load bootstrap5 %} {% bootstrap_css %} {% bootstrap_javascript %}
   </head>
   <body>
-    <nav>
-      <ul>
-        <li><a href="{% url 'product-list' %}">Groupes</a></li>
-        <li>factures</li>
-      </ul>
+    <nav class="d-flex justify-content-center gap-3 my-3">
+      <a href="{% url 'product-list' %}" class="btn btn-outline-primary"
+        >Groupes</a
+      >
+      <a href="{% url 'cart' %}" class="btn btn-outline-primary">🛒</a>
     </nav>
+
     <!-- balise block est provient de Django ensuite son nom content-->
     {% block content %}{% endblock %}
   </body>

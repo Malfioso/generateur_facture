@@ -70,6 +70,7 @@ from django.forms import modelformset_factory
 
 def create_invoice(request):
     extra_forms = int(request.GET.get('extra', 1))
+    remove_index = request.GET.get('remove_index')
 
     # Définir le FormSet globalement AVANT le if
     InvoiceItemFormSet = modelformset_factory(
@@ -80,24 +81,94 @@ def create_invoice(request):
     )
 
     if request.method == 'POST':
-        invoice_form = InvoiceForm(request.POST)
-        formset = InvoiceItemFormSet(request.POST)
+        # Si c'est une soumission normale (création de facture)
+        if 'create_invoice' in request.POST:
+            invoice_form = InvoiceForm(request.POST)
+            formset = InvoiceItemFormSet(request.POST)
 
-        if invoice_form.is_valid() and formset.is_valid():
-            invoice = invoice_form.save()
-            for form in formset:
-                if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
-                    item = form.save(commit=False)
-                    item.invoice = invoice
-                    item.save()
-            messages.success(request, "OUH OUH AH AH ! Facture créée avec plein de bananes 🍌🐒")
-            return redirect('invoice-detail', id=invoice.id)
+            if invoice_form.is_valid() and formset.is_valid():
+                invoice = invoice_form.save()
+                for form in formset:
+                    if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                        item = form.save(commit=False)
+                        item.invoice = invoice
+                        item.save()
+                messages.success(request, "OUH OUH AH AH ! Facture créée avec plein de bananes 🍌🐒")
+                return redirect('invoice-detail', id=invoice.id)
+        
+        # Si c'est un ajout de produit, on garde les données existantes
+        else:
+            invoice_form = InvoiceForm(request.POST)
+            formset = InvoiceItemFormSet(request.POST)
+            
+            # Récupérer tous les produits pour les prix
+            products = Product.objects.all()
+            
+            return render(request, 'products/invoice_form.html', {
+                'invoice_form': invoice_form,
+                'formset': formset,
+                'extra_forms': extra_forms,
+                'products': products
+            })
+    
+    # GET request - gestion des paramètres URL pour persistance
     else:
-        invoice_form = InvoiceForm()
-        formset = InvoiceItemFormSet(queryset=InvoiceItem.objects.none())
+        # Récupérer les données depuis les paramètres GET
+        initial_invoice_data = {}
+        if request.GET.get('customer_name'):
+            initial_invoice_data['customer_name'] = request.GET.get('customer_name')
+        if request.GET.get('notes'):
+            initial_invoice_data['notes'] = request.GET.get('notes')
+        
+        # Créer le formulaire invoice avec les données initiales
+        invoice_form = InvoiceForm(initial=initial_invoice_data)
+        
+        # Récupérer les données des produits depuis les paramètres GET
+        initial_formset_data = []
+        form_index = 0
+        
+        while True:
+            product_key = f'form-{form_index}-product'
+            quantity_key = f'form-{form_index}-quantity'
+            
+            if product_key in request.GET and request.GET.get(product_key):
+                try:
+                    product_id = int(request.GET.get(product_key))
+                    quantity = int(request.GET.get(quantity_key, 1))
+                    
+                    # Si on supprime un produit, on vérifie si c'est celui à exclure
+                    if remove_index is not None:
+                        remove_idx = int(remove_index)
+                        # On ne compte que les formulaires qui ont des données
+                        current_data_index = len(initial_formset_data)
+                        if current_data_index == remove_idx:
+                            form_index += 1
+                            continue
+                    
+                    initial_formset_data.append({
+                        'product': product_id,
+                        'quantity': quantity
+                    })
+                except (ValueError, TypeError):
+                    pass
+            else:
+                break
+            
+            form_index += 1
+        
+        # Ajuster le nombre de formulaires extra si on supprime
+        if remove_index is not None and extra_forms > 0:
+            extra_forms = max(1, extra_forms)  # Garder au moins 1 formulaire
+        
+        # Créer le formset avec les données initiales
+        formset = InvoiceItemFormSet(queryset=InvoiceItem.objects.none(), initial=initial_formset_data)
+
+    # Récupérer tous les produits pour les prix
+    products = Product.objects.all()
 
     return render(request, 'products/invoice_form.html', {
         'invoice_form': invoice_form,
         'formset': formset,
-        'extra_forms': extra_forms
+        'extra_forms': extra_forms,
+        'products': products
     })

@@ -12,21 +12,300 @@
     {{ formset.management_form }}
 
     <table>
-      {% for form in formset %}
-      <tr>
-        <td>{{ form.product }}</td>
-        <td>{{ form.quantity }}</td>
-        <td>{% if form.instance.pk %}{{ form.DELETE }} Supprimer{% endif %}</td>
-      </tr>
-      {% endfor %}
+      <thead>
+        <tr>
+          <th>Produit</th>
+          <th>Prix unitaire</th>
+          <th>Quantité</th>
+          <th>Total</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for form in formset %}
+        <tr>
+          <td>{{ form.product }}</td>
+          <td class="price-display">
+            {% if form.instance.product %} {{ form.instance.product.price }}€ {%
+            else %} - {% endif %}
+          </td>
+          <td>{{ form.quantity }}</td>
+          <td class="total-display">
+            {% if form.instance.product and form.instance.quantity %} {{
+            form.instance.total_price }}€ {% else %} - {% endif %}
+          </td>
+          <td>
+            {% if form.instance.pk %} {{ form.DELETE }} Supprimer {% else %}
+            <button
+              type="button"
+              class="remove-product-btn"
+              data-row-index="{{ forloop.counter0 }}"
+            >
+              🗑️ Supprimer
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
     </table>
   </fieldset>
 
-  <button type="submit">Créer la facture</button>
+  <button type="submit" name="create_invoice">Créer la facture</button>
 </form>
 
 <!-- Bouton pour ajouter un formulaire de produit en + -->
-<form method="get">
+<form method="get" id="add-product-form">
   <input type="hidden" name="extra" value="{{ extra_forms|add:1 }}" />
+  <!-- Champs cachés pour préserver les données du formulaire invoice -->
+  <input
+    type="hidden"
+    name="customer_name"
+    value="{{ invoice_form.customer_name.value|default:'' }}"
+  />
+  <input
+    type="hidden"
+    name="notes"
+    value="{{ invoice_form.notes.value|default:'' }}"
+  />
+
+  <!-- Champs cachés pour préserver les données des produits -->
+  <div id="hidden-product-data"></div>
+
   <button type="submit">➕ Ajouter un produit</button>
 </form>
+
+<!-- Bouton pour supprimer un produit -->
+<form method="get" id="remove-product-form" style="display: none">
+  <input type="hidden" name="extra" value="{{ extra_forms|add:-1 }}" />
+  <!-- Champs cachés pour préserver les données du formulaire invoice -->
+  <input
+    type="hidden"
+    name="customer_name"
+    value="{{ invoice_form.customer_name.value|default:'' }}"
+  />
+  <input
+    type="hidden"
+    name="notes"
+    value="{{ invoice_form.notes.value|default:'' }}"
+  />
+
+  <!-- Champs cachés pour préserver les données des produits -->
+  <div id="hidden-product-data-remove"></div>
+
+  <input type="hidden" name="remove_index" id="remove-index" value="" />
+</form>
+
+<script>
+  // Script pour mettre à jour le prix en temps réel lors de la sélection d'un produit
+  document.addEventListener('DOMContentLoaded', function() {
+      // Récupération des prix des produits depuis le serveur
+      const productPrices = {
+          {% for product in products %}
+          {{ product.id }}: {{ product.price }},
+          {% endfor %}
+      };
+
+      // Fonction pour mettre à jour le prix et le total
+      function updatePriceAndTotal(row) {
+          const productSelect = row.querySelector('select[name$="-product"]');
+          const quantityInput = row.querySelector('input[name$="-quantity"]');
+          const priceDisplay = row.querySelector('.price-display');
+          const totalDisplay = row.querySelector('.total-display');
+
+          if (productSelect && quantityInput && priceDisplay && totalDisplay) {
+              const selectedProductId = productSelect.value;
+              const quantity = parseInt(quantityInput.value) || 0;
+
+              if (selectedProductId && productPrices[selectedProductId]) {
+                  const price = productPrices[selectedProductId];
+                  const total = price * quantity;
+
+                  priceDisplay.textContent = price + '€';
+                  totalDisplay.textContent = total.toFixed(2) + '€';
+              } else {
+                  priceDisplay.textContent = '-';
+                  totalDisplay.textContent = '-';
+              }
+          }
+      }
+
+      // Ajout des écouteurs d'événements sur tous les formulaires
+      document.querySelectorAll('table tbody tr').forEach(function(row) {
+          const productSelect = row.querySelector('select[name$="-product"]');
+          const quantityInput = row.querySelector('input[name$="-quantity"]');
+
+          if (productSelect) {
+              productSelect.addEventListener('change', function() {
+                  updatePriceAndTotal(row);
+              });
+          }
+
+          if (quantityInput) {
+              quantityInput.addEventListener('input', function() {
+                  updatePriceAndTotal(row);
+              });
+          }
+
+          // Calcul initial pour les lignes qui ont déjà des données
+          updatePriceAndTotal(row);
+      });
+
+      // Fonction pour collecter les données des produits et les ajouter au formulaire d'ajout
+      function collectProductData(excludeIndex = -1) {
+          const hiddenDataDiv = document.getElementById('hidden-product-data');
+          const hiddenDataDivRemove = document.getElementById('hidden-product-data-remove');
+
+          if (hiddenDataDiv) hiddenDataDiv.innerHTML = ''; // Vider les données précédentes
+          if (hiddenDataDivRemove) hiddenDataDivRemove.innerHTML = '';
+
+          let formIndex = 0;
+          document.querySelectorAll('table tbody tr').forEach(function(row, index) {
+              // Exclure la ligne si elle doit être supprimée
+              if (index === excludeIndex) return;
+
+              const productSelect = row.querySelector('select[name$="-product"]');
+              const quantityInput = row.querySelector('input[name$="-quantity"]');
+
+              if (productSelect && quantityInput) {
+                  // Ajouter les données du produit comme champs cachés
+                  if (productSelect.value) {
+                      // Pour le formulaire d'ajout
+                      if (hiddenDataDiv) {
+                          const productHidden = document.createElement('input');
+                          productHidden.type = 'hidden';
+                          productHidden.name = `form-${formIndex}-product`;
+                          productHidden.value = productSelect.value;
+                          hiddenDataDiv.appendChild(productHidden);
+                      }
+
+                      // Pour le formulaire de suppression
+                      if (hiddenDataDivRemove) {
+                          const productHiddenRemove = document.createElement('input');
+                          productHiddenRemove.type = 'hidden';
+                          productHiddenRemove.name = `form-${formIndex}-product`;
+                          productHiddenRemove.value = productSelect.value;
+                          hiddenDataDivRemove.appendChild(productHiddenRemove);
+                      }
+                  }
+
+                  if (quantityInput.value) {
+                      // Pour le formulaire d'ajout
+                      if (hiddenDataDiv) {
+                          const quantityHidden = document.createElement('input');
+                          quantityHidden.type = 'hidden';
+                          quantityHidden.name = `form-${formIndex}-quantity`;
+                          quantityHidden.value = quantityInput.value;
+                          hiddenDataDiv.appendChild(quantityHidden);
+                      }
+
+                      // Pour le formulaire de suppression
+                      if (hiddenDataDivRemove) {
+                          const quantityHiddenRemove = document.createElement('input');
+                          quantityHiddenRemove.type = 'hidden';
+                          quantityHiddenRemove.name = `form-${formIndex}-quantity`;
+                          quantityHiddenRemove.value = quantityInput.value;
+                          hiddenDataDivRemove.appendChild(quantityHiddenRemove);
+                      }
+                  }
+
+                  formIndex++;
+              }
+          });
+      }
+
+      // Ajouter l'écouteur sur le bouton "Ajouter un produit"
+      const addProductForm = document.getElementById('add-product-form');
+      if (addProductForm) {
+          addProductForm.addEventListener('submit', function(e) {
+              collectProductData();
+          });
+      }
+
+      // Ajouter l'écouteur sur les boutons "Supprimer"
+      document.querySelectorAll('.remove-product-btn').forEach(function(button) {
+          button.addEventListener('click', function(e) {
+              e.preventDefault();
+              const rowIndex = parseInt(this.getAttribute('data-row-index'));
+
+              // Confirmation avant suppression
+              if (confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
+                  // Collecter les données en excluant la ligne à supprimer
+                  collectProductData(rowIndex);
+
+                  // Définir l'index de suppression
+                  document.getElementById('remove-index').value = rowIndex;
+
+                  // Soumettre le formulaire de suppression
+                  document.getElementById('remove-product-form').submit();
+              }
+          });
+      });
+  });
+</script>
+
+<style>
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+
+  table th,
+  table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+
+  table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+  }
+
+  .price-display,
+  .total-display {
+    font-weight: bold;
+    color: #2c5530;
+  }
+
+  .remove-product-btn {
+    background-color: #f44336;
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .remove-product-btn:hover {
+    background-color: #da190b;
+  }
+
+  button {
+    background-color: #4caf50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 5px;
+  }
+
+  button:hover {
+    background-color: #45a049;
+  }
+
+  fieldset {
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+
+  legend {
+    font-weight: bold;
+    padding: 0 10px;
+  }
+</style>

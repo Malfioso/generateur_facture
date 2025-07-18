@@ -1,0 +1,32 @@
+<h1>Créer une facture 🍌🧾</h1>
+
+<form method="post">
+  {% csrf_token %}
+  <fieldset>
+    <legend>Infos client</legend>
+    {{ invoice_form.as_p }}
+  </fieldset>
+
+  <fieldset>
+    <legend>Produits</legend>
+    {{ formset.management_form }}
+
+    <table>
+      {% for form in formset %}
+      <tr>
+        <td>{{ form.product }}</td>
+        <td>{{ form.quantity }}</td>
+        <td>{% if form.instance.pk %}{{ form.DELETE }} Supprimer{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </fieldset>
+
+  <button type="submit">Créer la facture</button>
+</form>
+
+<!-- Bouton pour ajouter un formulaire de produit en + -->
+<form method="get">
+  <input type="hidden" name="extra" value="{{ extra_forms|add:1 }}" />
+  <button type="submit">➕ Ajouter un produit</button>
+</form>

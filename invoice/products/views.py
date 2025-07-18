@@ -1,11 +1,12 @@
-from django.http import HttpResponse, JsonResponse
+
+from django.forms import modelformset_factory
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.views.decorators.csrf import csrf_exempt
+from .forms import InvoiceForm, InvoiceItemFormSet
 from django.contrib.auth.decorators import user_passes_test
 import json
 from products.models import Product, Invoice, InvoiceItem
-from .forms import ProductForm, InvoiceForm, InvoiceItemFormSet
+from .forms import InvoiceItemFormSet, ProductForm
 
 def product_list(request):
     products = Product.objects.all()
@@ -46,6 +47,8 @@ def update_product_price(request, product_id):
             messages.error(request, 'Format de prix invalide')
 
     return redirect('product-list')
+
+
 def invoice_list(request):
     """Affiche la liste des factures"""
     invoices = Invoice.objects.all().order_by('-created_at')
@@ -53,61 +56,48 @@ def invoice_list(request):
         'invoices': invoices
     })
 
-def invoice_create(request):
-    """Crée une nouvelle facture"""
-    if request.method == 'POST':
-        form = InvoiceForm(request.POST)
-        formset = InvoiceItemFormSet(request.POST)
-        
-        if form.is_valid() and formset.is_valid():
-            # Sauvegarde de la facture
-            invoice = form.save()
-            
-            # Sauvegarde des items
-            formset.instance = invoice
-            formset.save()
-            
-            messages.success(request, 'Facture créée avec succès !')
-            return redirect('invoice-detail', id=invoice.id)
-    else:
-        form = InvoiceForm()
-        formset = InvoiceItemFormSet()
-    
-    return render(request, 'products/invoice_create.html', {
-        'form': form,
-        'formset': formset
-    })
-
+# Affichage du détail d'une facture
 def invoice_detail(request, id):
-    """Affiche les détails d'une facture"""
-    invoice = get_object_or_404(Invoice, id=id)
-    items = invoice.invoiceitem_set.all()
-    
+    invoice = get_object_or_404(Invoice, pk=id)
+    items = InvoiceItem.objects.filter(invoice=invoice)
     return render(request, 'products/invoice_detail.html', {
         'invoice': invoice,
         'items': items
     })
 
-def invoice_edit(request, id):
-    """Modifie une facture existante"""
-    invoice = get_object_or_404(Invoice, id=id)
-    
+
+from django.forms import modelformset_factory
+
+def create_invoice(request):
+    extra_forms = int(request.GET.get('extra', 1))
+
+    # Définir le FormSet globalement AVANT le if
+    InvoiceItemFormSet = modelformset_factory(
+        InvoiceItem,
+        fields=('product', 'quantity'),
+        extra=extra_forms,
+        can_delete=True
+    )
+
     if request.method == 'POST':
-        form = InvoiceForm(request.POST, instance=invoice)
-        formset = InvoiceItemFormSet(request.POST, instance=invoice)
-        
-        if form.is_valid() and formset.is_valid():
-            form.save()
-            formset.save()
-            
-            messages.success(request, 'Facture modifiée avec succès !')
+        invoice_form = InvoiceForm(request.POST)
+        formset = InvoiceItemFormSet(request.POST)
+
+        if invoice_form.is_valid() and formset.is_valid():
+            invoice = invoice_form.save()
+            for form in formset:
+                if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                    item = form.save(commit=False)
+                    item.invoice = invoice
+                    item.save()
+            messages.success(request, "OUH OUH AH AH ! Facture créée avec plein de bananes 🍌🐒")
             return redirect('invoice-detail', id=invoice.id)
     else:
-        form = InvoiceForm(instance=invoice)
-        formset = InvoiceItemFormSet(instance=invoice)
-    
-    return render(request, 'products/invoice_edit.html', {
-        'form': form,
+        invoice_form = InvoiceForm()
+        formset = InvoiceItemFormSet(queryset=InvoiceItem.objects.none())
+
+    return render(request, 'products/invoice_form.html', {
+        'invoice_form': invoice_form,
         'formset': formset,
-        'invoice': invoice
+        'extra_forms': extra_forms
     })

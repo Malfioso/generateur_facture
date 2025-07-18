@@ -6,11 +6,6 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Facture #{{ invoice.pk }}</h2>
         <div>
-          <a
-            href="{% url 'invoice-edit' invoice.id %}"
-            class="btn btn-outline-primary"
-            >Modifier</a
-          >
           <a href="{% url 'invoice-list' %}" class="btn btn-secondary"
             >Retour</a
           >

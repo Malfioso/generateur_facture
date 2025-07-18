@@ -43,6 +43,11 @@ This project is a Django-based invoice generator for managing products and invoi
 
 5. **Create a superuser (for admin access)**
 
+   id : gavinj
+   psw : sxm
+
+   (need to log in as a superuser to fully use the application)
+
    ```sh
    python invoice/manage.py createsuperuser
    ```

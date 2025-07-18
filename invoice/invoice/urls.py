@@ -34,8 +34,6 @@ urlpatterns = [
     
     # Routes pour les factures
     path('invoices/', product_views.invoice_list, name="invoice-list"),
-    path('invoices/create/', product_views.invoice_create, name="invoice-create"),
     path('invoices/<int:id>/', product_views.invoice_detail, name="invoice-detail"),
-    path('invoices/<int:id>/edit/', product_views.invoice_edit, name="invoice-edit"),
-
+    path('invoices/create/', product_views.create_invoice, name='invoice-create'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
